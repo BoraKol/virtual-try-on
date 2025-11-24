@@ -1,6 +1,6 @@
 import { GoogleGenAI, Modality } from '@google/genai';
 
-const GEMINI_MODEL = 'imagen-3.0-fast-generate';
+const GEMINI_MODEL = 'gemini-3-pro-image';
 
 export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') {

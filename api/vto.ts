@@ -1,6 +1,6 @@
 import { GoogleGenAI, Modality } from '@google/genai';
 
-const GEMINI_MODEL = 'imagen-3.0-fast-generate';
+const GEMINI_MODEL = 'gemini-3-pro-image';
 
 const VTO_SYSTEM_INSTRUCTION = `You are an expert AI specialized in Virtual Try-On (VTO) technology and photorealistic image synthesis. Your task is to generate a new image based on two inputs:
 
