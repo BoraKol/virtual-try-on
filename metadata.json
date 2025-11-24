@@ -1,0 +1,5 @@
+{
+  "name": "Nano Style Studio",
+  "description": "A next-generation AI image editor and virtual try-on studio powered by Gemini 2.5 Flash Image (Nano Banana).",
+  "requestFramePermissions": []
+}
