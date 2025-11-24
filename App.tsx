@@ -23,12 +23,12 @@ const App: React.FC = () => {
               <Zap className="text-white" size={20} fill="currentColor" />
             </div>
             <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-              Nano Style Studio
+              Virtual Try On Studio
             </h1>
           </div>
           
           <div className="text-xs font-medium text-slate-500 px-3 py-1 border border-slate-800 rounded-full">
-             Powered by Gemini 2.5
+             Powered by Gemini 3 Pro Image
           </div>
         </div>
       </header>
