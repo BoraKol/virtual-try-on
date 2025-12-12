@@ -36,9 +36,20 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { userBase64, garmentBase64 } = req.body as { userBase64?: string; garmentBase64?: string };
-    if (!userBase64 || !garmentBase64) {
-      res.status(400).json({ error: 'Missing userBase64 or garmentBase64' });
+    const { userBase64, garmentBase64, upperBase64, lowerBase64 } = req.body as {
+      userBase64?: string;
+      garmentBase64?: string;
+      upperBase64?: string;
+      lowerBase64?: string;
+    };
+
+    if (!userBase64) {
+      res.status(400).json({ error: 'Missing userBase64' });
+      return;
+    }
+
+    if (!garmentBase64 && (!upperBase64 || !lowerBase64)) {
+      res.status(400).json({ error: 'Missing garment inputs. Provide either a single garment OR both upper and lower garments.' });
       return;
     }
 
@@ -47,26 +58,56 @@ export default async function handler(req: any, res: any) {
     const userMime = userMimeMatch ? userMimeMatch[1] : 'image/jpeg';
     const cleanUser = userBase64.replace(/^data:[^;]+;base64,/, '');
 
-    const garmentMimeMatch = garmentBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
-    const garmentMime = garmentMimeMatch ? garmentMimeMatch[1] : 'image/jpeg';
-    const cleanGarment = garmentBase64.replace(/^data:[^;]+;base64,/, '');
+    const parts: any[] = [
+      { inlineData: { data: cleanUser, mimeType: userMime } }
+    ];
+
+    let systemInstruction = VTO_SYSTEM_INSTRUCTION;
+
+    if (upperBase64 && lowerBase64) {
+      // Helper to clean base64
+      const getCleanData = (b64: string) => {
+        const match = b64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+        return {
+          mime: match ? match[1] : 'image/jpeg',
+          data: b64.replace(/^data:[^;]+;base64,/, '')
+        };
+      };
+
+      const upper = getCleanData(upperBase64);
+      const lower = getCleanData(lowerBase64);
+
+      parts.push({ inlineData: { data: upper.data, mimeType: upper.mime } });
+      parts.push({ inlineData: { data: lower.data, mimeType: lower.mime } });
+
+      systemInstruction += `\n\nAdditional Instruction: The user has provided two garment images:
+      1. Upper Outfit (First garment image provided after user photo).
+      2. Lower Outfit (Second garment image provided).
+      
+      Task: Dress the user in BOTH items effectively. The Upper Outfit should be worn on the torso/upper body. The Lower Outfit should be worn on the legs/lower body. Merge them naturally at the waist.`;
+
+    } else if (garmentBase64) {
+      const garmentMimeMatch = garmentBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+      const garmentMime = garmentMimeMatch ? garmentMimeMatch[1] : 'image/jpeg';
+      const cleanGarment = garmentBase64.replace(/^data:[^;]+;base64,/, '');
+
+      parts.push({ inlineData: { data: cleanGarment, mimeType: garmentMime } });
+    }
+
+    parts.push({ text: systemInstruction });
 
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL,
       contents: {
-        parts: [
-          { inlineData: { data: cleanUser, mimeType: userMime } },
-          { inlineData: { data: cleanGarment, mimeType: garmentMime } },
-          { text: VTO_SYSTEM_INSTRUCTION },
-        ],
+        parts,
       },
       config: {
         responseModalities: [Modality.IMAGE],
       },
     });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    const imageData = parts && parts[0]?.inlineData?.data;
+    const responseParts = response.candidates?.[0]?.content?.parts;
+    const imageData = responseParts && responseParts[0]?.inlineData?.data;
 
     if (!imageData) {
       res.status(502).json({ error: 'No image data returned from Gemini.' });

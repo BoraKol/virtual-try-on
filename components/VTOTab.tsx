@@ -7,22 +7,47 @@ import { Shirt, AlertCircle } from 'lucide-react';
 
 export const VTOTab: React.FC = () => {
   const [userImage, setUserImage] = useState<string | null>(null);
+
+  // Single garment mode state
   const [garmentImage, setGarmentImage] = useState<string | null>(null);
+
+  // Outfit combination mode state
+  const [upperGarment, setUpperGarment] = useState<string | null>(null);
+  const [lowerGarment, setLowerGarment] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<'single' | 'outfit'>('single');
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
-    if (!userImage || !garmentImage) {
-      setError("Please upload both a user photo and a garment photo.");
+    setError(null);
+
+    if (!userImage) {
+      setError("Please upload a user photo.");
+      return;
+    }
+
+    if (mode === 'single' && !garmentImage) {
+      setError("Please upload a garment photo.");
+      return;
+    }
+
+    if (mode === 'outfit' && (!upperGarment || !lowerGarment)) {
+      setError("Please upload both upper and lower outfit photos.");
       return;
     }
 
     setIsGenerating(true);
-    setError(null);
 
     try {
-      const generatedImage = await generateVTOWithGemini(userImage, garmentImage);
+      const generatedImage = await generateVTOWithGemini({
+        userBase64: userImage,
+        garmentBase64: mode === 'single' ? garmentImage! : undefined,
+        upperBase64: mode === 'outfit' ? upperGarment! : undefined,
+        lowerBase64: mode === 'outfit' ? lowerGarment! : undefined,
+      });
       setResult(generatedImage);
     } catch (e) {
       setError("Failed to generate try-on image. Please ensure inputs are clear.");
@@ -45,8 +70,7 @@ export const VTOTab: React.FC = () => {
 
   const handleReset = () => {
     setResult(null);
-    setUserImage(null);
-    setGarmentImage(null);
+    // Optional: Keep the inputs or clear them. Keeping them is usually better UX.
     setError(null);
   };
 
@@ -60,13 +84,13 @@ export const VTOTab: React.FC = () => {
         <div className="space-y-6">
           <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 h-full">
             <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-              <span className="bg-indigo-500/20 text-indigo-400 p-2 rounded-lg">1</span> 
+              <span className="bg-indigo-500/20 text-indigo-400 p-2 rounded-lg">1</span>
               User Photo
             </h3>
-            <ImageUploader 
-              label="Person" 
-              image={userImage} 
-              onImageChange={setUserImage} 
+            <ImageUploader
+              label="Person"
+              image={userImage}
+              onImageChange={setUserImage}
               heightClass="h-80"
             />
             <p className="text-xs text-slate-500 mt-4 leading-relaxed">
@@ -76,20 +100,58 @@ export const VTOTab: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 h-full">
-            <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-              <span className="bg-indigo-500/20 text-indigo-400 p-2 rounded-lg">2</span> 
-              Garment Photo
-            </h3>
-            <ImageUploader 
-              label="Outfit" 
-              image={garmentImage} 
-              onImageChange={setGarmentImage} 
-              heightClass="h-80"
-            />
-             <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-              Upload an image of the clothing item (flat lay or on a mannequin works best).
-            </p>
+          <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                <span className="bg-indigo-500/20 text-indigo-400 p-2 rounded-lg">2</span>
+                Garment
+              </h3>
+
+              <div className="flex bg-slate-800 rounded-lg p-1">
+                <button
+                  onClick={() => setMode('single')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mode === 'single' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Single
+                </button>
+                <button
+                  onClick={() => setMode('outfit')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mode === 'outfit' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Outfit
+                </button>
+              </div>
+            </div>
+
+            {mode === 'single' ? (
+              <div className="flex-1">
+                <ImageUploader
+                  label="Outfit"
+                  image={garmentImage}
+                  onImageChange={setGarmentImage}
+                  heightClass="h-80"
+                />
+                <p className="text-xs text-slate-500 mt-4 leading-relaxed">
+                  Upload an image of the clothing item.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 space-y-4">
+                <ImageUploader
+                  label="Upper Outfit"
+                  image={upperGarment}
+                  onImageChange={setUpperGarment}
+                  heightClass="h-36"
+                />
+                <ImageUploader
+                  label="Lower Outfit"
+                  image={lowerGarment}
+                  onImageChange={setLowerGarment}
+                  heightClass="h-36"
+                />
+              </div>
+            )}
+
           </div>
         </div>
       </div>
@@ -103,11 +165,11 @@ export const VTOTab: React.FC = () => {
 
       <div className="sticky bottom-6 z-10">
         <div className="max-w-md mx-auto bg-slate-900/80 backdrop-blur-md p-2 rounded-2xl border border-slate-700 shadow-2xl">
-          <Button 
-            onClick={handleGenerate} 
-            isLoading={isGenerating} 
+          <Button
+            onClick={handleGenerate}
+            isLoading={isGenerating}
             className="w-full text-lg"
-            disabled={!userImage || !garmentImage}
+            disabled={!userImage || (mode === 'single' ? !garmentImage : (!upperGarment || !lowerGarment))}
           >
             <Shirt size={20} />
             Try On Now

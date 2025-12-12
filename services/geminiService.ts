@@ -30,15 +30,31 @@ export const editImageWithGemini = async (
 /**
  * Perform Virtual Try-On using User Image and Garment Image.
  */
+// Define input interface for clarity and flexibility
+export interface VTOOptions {
+  userBase64: string;
+  garmentBase64?: string;
+  upperBase64?: string;
+  lowerBase64?: string;
+}
+
+/**
+ * Perform Virtual Try-On using User Image and Garment Image(s).
+ */
 export const generateVTOWithGemini = async (
-  userBase64: string,
-  garmentBase64: string
+  options: VTOOptions
 ): Promise<string> => {
   try {
     const resp = await fetch('/api/vto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userBase64, garmentBase64, instruction: VTO_SYSTEM_INSTRUCTION }),
+      body: JSON.stringify({
+        userBase64: options.userBase64,
+        garmentBase64: options.garmentBase64,
+        upperBase64: options.upperBase64,
+        lowerBase64: options.lowerBase64,
+        instruction: VTO_SYSTEM_INSTRUCTION
+      }),
     });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
